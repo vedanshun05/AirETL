@@ -1,0 +1,49 @@
+{
+  "record_id": "20251115_104321",
+  "timestamp": "2025-11-15T10:43:21.926979",
+  "record": [
+    {
+      "user_id": "123",
+      "score": "95.5"
+    },
+    {
+      "user_id": 456,
+      "score": 88
+    },
+    {
+      "user_id": "789",
+      "score": "92"
+    }
+  ],
+  "schema": {
+    "fields": {
+      "user_id": {
+        "type": "phone",
+        "confidence": 0.63,
+        "sample_values": [
+          "123",
+          456,
+          "789"
+        ],
+        "total_values": 3,
+        "null_count": 0,
+        "canonical_name": "canonical_id"
+      },
+      "score": {
+        "type": "integer",
+        "confidence": 0.6,
+        "sample_values": [
+          "95.5",
+          88,
+          "92"
+        ],
+        "total_values": 3,
+        "null_count": 0
+      }
+    },
+    "canonical_mapping": {
+      "user_id": "canonical_id"
+    },
+    "total_records": 3
+  }
+}

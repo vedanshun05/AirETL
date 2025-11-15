@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}History - Schema Inference Demo{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <h1>📜 Processing History</h1>
+    <p>Recently processed records</p>
+    
+    {% if records %}
+    <div class="history-list">
+        {% for record in records %}
+        <div class="history-item">
+            <div class="history-icon">📄</div>
+            <div class="history-details">
+                <div class="history-name">{{ record }}</div>
+                <div class="history-meta">Stored in local storage</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No records processed yet</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">Upload Your First File</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

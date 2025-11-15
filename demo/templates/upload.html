@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Upload - Schema Inference Demo{% endblock %}
+
+{% block content %}
+<div class="upload-page">
+    <h1>📤 Upload JSON File</h1>
+    <p>Upload a JSON file to automatically infer its schema</p>
+    
+    <div class="upload-container">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+            <div class="file-input-wrapper">
+                <input type="file" name="file" id="fileInput" accept=".json" required>
+                <label for="fileInput" class="file-input-label">
+                    <span class="file-icon">📁</span>
+                    <span id="fileName">Choose JSON file...</span>
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-large">
+                Infer Schema
+            </button>
+        </form>
+        
+        <div class="example-files">
+            <h3>📋 Try Sample Files:</h3>
+            <ul>
+                <li><code>data/sample1.json</code> - Simple e-commerce data</li>
+                <li><code>data/sample2.json</code> - Nested objects</li>
+                <li><code>data/sample3.json</code> - Type conflicts</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const fileName = e.target.files[0]?.name || 'Choose JSON file...';
+        document.getElementById('fileName').textContent = fileName;
+    });
+</script>
+{% endblock %}

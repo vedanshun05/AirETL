@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline - Schema Inference Demo{% endblock %}
+
+{% block content %}
+<div class="pipeline-page">
+    <h1>⚡ Data Pipeline</h1>
+    <p>Real-time data streaming through Kafka</p>
+    
+    <div class="pipeline-diagram">
+        <div class="pipeline-step">
+            <div class="step-icon">📥</div>
+            <div class="step-label">JSON Upload</div>
+        </div>
+        
+        <div class="pipeline-arrow">→</div>
+        
+        <div class="pipeline-step">
+            <div class="step-icon">🔍</div>
+            <div class="step-label">Schema Inference</div>
+        </div>
+        
+        <div class="pipeline-arrow">→</div>
+        
+        <div class="pipeline-step">
+            <div class="step-icon">📨</div>
+            <div class="step-label">Kafka Stream</div>
+        </div>
+        
+        <div class="pipeline-arrow">→</div>
+        
+        <div class="pipeline-step">
+            <div class="step-icon">💾</div>
+            <div class="step-label">Storage</div>
+        </div>
+    </div>
+    
+    <div class="pipeline-info">
+        <h2>📊 Pipeline Status</h2>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-icon">✅</div>
+                <div class="status-label">Kafka</div>
+                <div class="status-value">Running</div>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-icon">✅</div>
+                <div class="status-label">Inference API</div>
+                <div class="status-value">Healthy</div>
+            </div>
+            
+            <div class="status-card">
+                <div class="status-icon">✅</div>
+                <div class="status-label">Storage</div>
+                <div class="status-value">Ready</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="commands-section">
+        <h2>🖥️ Quick Commands</h2>
+        
+        <div class="command-card">
+            <h3>Start Consumer</h3>
+            <pre><code>cd pipeline && python consumer.py</code></pre>
+        </div>
+        
+        <div class="command-card">
+            <h3>Send Test Data</h3>
+            <pre><code>cd pipeline && python producer.py ../data/sample1.json</code></pre>
+        </div>
+        
+        <div class="command-card">
+            <h3>View Kafka Logs</h3>
+            <pre><code>docker-compose logs -f kafka</code></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Results - Schema Inference Demo{% endblock %}
+
+{% block content %}
+<div class="results-page">
+    <h1>✅ Schema Inference Results</h1>
+    <p class="subtitle">File: <strong>{{ filename }}</strong> | Records: <strong>{{ total_records }}</strong></p>
+    
+    <div class="results-grid">
+        <!-- Inferred Fields -->
+        <div class="results-section">
+            <h2>📊 Inferred Fields</h2>
+            
+            <div class="fields-table">
+                {% for field_name, field_info in fields.items() %}
+                <div class="field-row">
+                    <div class="field-header">
+                        {% if field_info.confidence >= 0.8 %}
+                            <span class="confidence-badge high">🟢</span>
+                        {% elif field_info.confidence >= 0.5 %}
+                            <span class="confidence-badge medium">🟡</span>
+                        {% else %}
+                            <span class="confidence-badge low">🔴</span>
+                        {% endif %}
+                        
+                        <span class="field-name">{{ field_name }}</span>
+                    </div>
+                    
+                    <div class="field-details">
+                        <div class="field-detail">
+                            <strong>Type:</strong> 
+                            <span class="type-badge">{{ field_info.type }}</span>
+                        </div>
+                        
+                        <div class="field-detail">
+                            <strong>Confidence:</strong> 
+                            <span class="confidence-value">{{ field_info.confidence }}</span>
+                        </div>
+                        
+                        {% if field_info.canonical_name %}
+                        <div class="field-detail">
+                            <strong>Canonical:</strong> 
+                            <span class="canonical-name">{{ field_info.canonical_name }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="field-detail">
+                            <strong>Sample:</strong> 
+                            <code>{{ field_info.sample_values[0] }}</code>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Canonical Mappings -->
+        {% if canonical_mapping %}
+        <div class="results-section">
+            <h2>🔗 Canonical Mappings</h2>
+            <p class="section-description">Similar fields mapped to common names</p>
+            
+            <div class="mappings-list">
+                {% for original, canonical in canonical_mapping.items() %}
+                <div class="mapping-item">
+                    <span class="original">{{ original }}</span>
+                    <span class="arrow">→</span>
+                    <span class="canonical">{{ canonical }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Sample Data -->
+        <div class="results-section">
+            <h2>📄 Sample Data</h2>
+            <pre class="code-block">{{ raw_data | tojson(indent=2) }}</pre>
+        </div>
+    </div>
+    
+    <div class="action-buttons">
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">Upload Another</a>
+        <a href="{{ url_for('pipeline_view') }}" class="btn btn-secondary">Send to Pipeline</a>
+    </div>
+</div>
+{% endblock %}
