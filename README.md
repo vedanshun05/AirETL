@@ -134,6 +134,76 @@ python test_pipeline.py
 
 This will process all sample files through the pipeline.
 
+## Sample JSON Types for Testing
+
+The pipeline supports various JSON data structures. Here are 5 types of sample JSON files you can use:
+
+### 1. User Profile Data (sample1.json)
+```json
+{
+  "user_id": "12345",
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "age": 30,
+  "registration_date": "2024-01-15"
+}
+```
+
+### 2. E-commerce Transaction (sample2.json)
+```json
+{
+  "transaction_id": "TXN-2024-001",
+  "customer_id": "CUST-5678",
+  "items": [
+    {"product_id": "PROD-100", "quantity": 2, "price": 29.99},
+    {"product_id": "PROD-200", "quantity": 1, "price": 49.99}
+  ],
+  "total_amount": 109.97,
+  "timestamp": "2024-01-16T10:30:00Z"
+}
+```
+
+### 3. IoT Sensor Data (sample3.json)
+```json
+{
+  "sensor_id": "SENSOR-001",
+  "location": "Building A - Floor 3",
+  "temperature": 22.5,
+  "humidity": 45.2,
+  "pressure": 1013.25,
+  "timestamp": "2024-01-16T14:45:30Z"
+}
+```
+
+### 4. Social Media Post (sample4.json)
+```json
+{
+  "post_id": "POST-98765",
+  "user": "alice_smith",
+  "content": "Great day for data engineering!",
+  "likes": 150,
+  "comments": 23,
+  "tags": ["dataengineering", "etl", "kafka"],
+  "created_at": "2024-01-16T09:20:15Z"
+}
+```
+
+### 5. Log Entry Data (sample5.json)
+```json
+{
+  "log_id": "LOG-2024-456",
+  "service": "api-gateway",
+  "level": "INFO",
+  "message": "Request processed successfully",
+  "request_id": "REQ-789",
+  "duration_ms": 125,
+  "status_code": 200,
+  "timestamp": "2024-01-16T15:30:45Z"
+}
+```
+
+Create these sample files in the `data/` directory to test different data schemas through your ETL pipeline.
+
 ## Services Access
 
 - **Demo Application**: http://localhost:5000 (or as configured in app.py)
