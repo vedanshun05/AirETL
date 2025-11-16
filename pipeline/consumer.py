@@ -132,6 +132,20 @@ class SchemaConsumer:
         self.consumer.close()
         print("🔌 Consumer closed")
 
+    def store_data_dynamically(self, data, schema):
+        """Store data in PostgreSQL with dynamic schema"""
+        # Create table dynamically based on inferred schema
+        table_name = f"data_{schema['schema_id']}"
+        
+        # Generate CREATE TABLE from schema
+        columns = []
+        for field, dtype in schema['fields'].items():
+            pg_type = self.map_to_postgres_type(dtype)
+            columns.append(f"{field} {pg_type}")
+        
+        create_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(columns)})"
+        # Execute and insert data
+
 
 def main():
     """Main function to run consumer from command line"""
