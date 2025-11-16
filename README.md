@@ -2,6 +2,73 @@
 
 A Python-based ETL (Extract, Transform, Load) pipeline with Kafka streaming, PostgreSQL storage, and MinIO object storage.
 
+## 🏗️ Architecture & Workflow
+
+AirETL is an intelligent data pipeline that automatically infers schemas from JSON data using machine learning and processes them through a distributed streaming architecture.
+
+### Workflow Overview
+
+```
+JSON Data → Producer → Kafka → Consumer → Schema Inference API → Storage (PostgreSQL/MinIO)
+                                    ↓
+                            Web UI Dashboard (Real-time Monitoring)
+```
+
+### How It Works
+
+1. **Data Ingestion** (`producer.py`)
+   - Reads JSON files from the `data/` directory
+   - Validates and serializes JSON data
+   - Publishes records to Kafka topic `raw-data` with unique keys
+   - Handles both single objects and arrays of records
+
+2. **Message Streaming** (Kafka)
+   - Acts as a distributed message queue
+   - Ensures fault-tolerant, scalable data transfer
+   - Decouples producers from consumers for better reliability
+   - Maintains message order and delivery guarantees
+
+3. **Data Processing** (`consumer.py`)
+   - Subscribes to Kafka topic and consumes messages in real-time
+   - Batches records for efficient processing
+   - Calls the Schema Inference API for each record
+   - Displays inferred schemas with confidence scores
+   - Can dynamically store data in PostgreSQL based on inferred schema
+
+4. **ML-Powered Schema Inference** (`schema_inference.py` + `api.py`)
+   - **Pattern Detection**: Identifies emails, URLs, dates, phone numbers, UUIDs
+   - **Type Inference**: Automatically detects data types (string, integer, float, boolean, etc.)
+   - **Confidence Scoring**: Assigns confidence levels (0.0-1.0) to each field
+   - **Canonical Mapping**: Maps similar fields (e.g., "prod_price", "item_cost") to canonical names
+   - **Nested JSON Handling**: Flattens and processes nested/complex JSON structures
+   - Exposed via FastAPI REST endpoint for easy integration
+
+5. **Web Interface** (`app.py`)
+   - Flask-based dashboard for monitoring and testing
+   - Real-time pipeline status and metrics
+   - Manual data submission through UI
+   - Analytics and visualization of processed data
+   - Health checks for all services
+
+### Tech Stack & Usage
+
+| Technology | Purpose | Usage in AirETL |
+|------------|---------|-----------------|
+| **FastAPI** | High-performance API framework | Serves the ML schema inference API with automatic OpenAPI docs |
+| **Uvicorn** | ASGI server | Runs the FastAPI application with hot-reload support |
+| **Kafka** | Distributed streaming platform | Message queue for decoupling data ingestion from processing |
+| **Zookeeper** | Kafka coordination | Manages Kafka brokers and maintains cluster state |
+| **PostgreSQL** | Relational database | Stores structured data with dynamically created tables |
+| **MinIO** | S3-compatible object storage | Stores raw JSON files and large datasets |
+| **Boto3** | AWS SDK for Python | Interfaces with MinIO for object storage operations |
+| **Flask** | Web framework | Powers the monitoring dashboard and UI |
+| **Pandas** | Data manipulation | Processes and transforms data efficiently |
+| **NumPy** | Numerical computing | Handles numerical operations in schema inference |
+| **Genson** | JSON schema generator | Assists in generating JSON schemas |
+| **FastText** | Text classification | ML model for intelligent field name mapping |
+| **Prometheus Client** | Metrics collection | Exposes pipeline metrics for monitoring |
+| **Psycopg2** | PostgreSQL adapter | Enables Python-PostgreSQL connectivity |
+
 ## Prerequisites
 
 - Python 3.8+
@@ -239,3 +306,17 @@ To remove volumes as well (this will delete all data):
 ```bash
 docker-compose down -v
 ```
+
+## 🎯 Key Features
+
+- **Automatic Schema Detection**: ML-powered inference with confidence scores
+- **Pattern Recognition**: Identifies emails, URLs, dates, phone numbers, and more
+- **Canonical Field Mapping**: Intelligently maps similar field names (e.g., "price", "cost" → "canonical_price")
+- **Real-time Processing**: Kafka-based streaming for scalable data ingestion
+- **Distributed Architecture**: Decoupled components for reliability and scalability
+- **Web Dashboard**: Monitor pipeline health and view analytics in real-time
+- **Flexible Storage**: PostgreSQL for structured data, MinIO for object storage
+
+---
+
+Built with ❤️ for intelligent data engineering
