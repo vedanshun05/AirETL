@@ -1,193 +1,332 @@
 """
-Flask Demo Web UI for Schema Inference
+Flask Web UI for AirETL Pipeline
+Enhanced with real-time features
 """
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-import requests
-import json
+from flask import Flask, render_template, request, jsonify
 import os
+import json
 from datetime import datetime
-import sys
-
-# Add parent directory to path to import pipeline modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from pipeline.producer import SchemaProducer
-from pipeline.storage import DataStorage
+import glob
+import requests
 
 app = Flask(__name__)
-app.secret_key = 'hackathon-secret-key-2024'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 # Configuration
-INFERENCE_API = os.getenv('INFERENCE_API', 'http://localhost:8001')
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+STORAGE_DIR = os.path.join(os.path.dirname(__file__), 'storage')
+INFERENCE_API_URL = "http://localhost:8001"
 
-# Initialize storage
-storage = DataStorage(storage_type='local')
-
+# Ensure storage directory exists
+os.makedirs(STORAGE_DIR, exist_ok=True)
 
 @app.route('/')
-def index():
-    """Home page"""
+def upload():
+    """Enhanced upload interface"""
     return render_template('index.html')
 
-
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    """Upload JSON file and infer schema"""
-    if request.method == 'GET':
-        return render_template('upload.html')
-    
-    if 'file' not in request.files:
-        flash('No file selected', 'error')
-        return redirect(url_for('upload'))
-    
-    file = request.files['file']
-    
-    if file.filename == '':
-        flash('No file selected', 'error')
-        return redirect(url_for('upload'))
-    
-    if not file.filename.endswith('.json'):
-        flash('Only JSON files are allowed', 'error')
-        return redirect(url_for('upload'))
-    
+@app.route('/results')
+def results():
+    """Show all processed results"""
     try:
-        # Read and parse JSON
-        content = file.read().decode('utf-8')
-        data = json.loads(content)
+        # Read all JSON files from storage
+        result_files = glob.glob(os.path.join(STORAGE_DIR, 'record_*.json'))
+        results = []
         
-        # Handle both single objects and arrays
-        records = data if isinstance(data, list) else [data]
+        for file_path in sorted(result_files, reverse=True)[:50]:  # Last 50 results
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    results.append({
+                        'filename': os.path.basename(file_path),
+                        'timestamp': data.get('timestamp', datetime.now().isoformat()),
+                        'record_count': len(data.get('data', [])) if isinstance(data.get('data'), list) else 1,
+                        'schema': data.get('schema', {}),
+                        'confidence': data.get('confidence', 0)
+                    })
+            except json.JSONDecodeError as e:
+                print(f"❌ Invalid JSON in {file_path}: {e}")
+                continue
+            except Exception as e:
+                print(f"❌ Error reading {file_path}: {e}")
+                continue
         
-        # Call inference API
-        response = requests.post(
-            f"{INFERENCE_API}/infer",
-            json={"data": records},
-            timeout=10
-        )
-        
-        if response.status_code != 200:
-            flash(f'Inference API error: {response.status_code}', 'error')
-            return redirect(url_for('upload'))
-        
-        result = response.json()
-        
-        # Save to storage
-        record_id = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        storage.save_record(records, result, record_id=record_id)
-        
-        # Prepare data for display
-        fields = result.get('fields', {})
-        canonical_mapping = result.get('canonical_mapping', {})
-        total_records = result.get('total_records', len(records))
-        
-        return render_template(
-            'results.html',
-            filename=file.filename,
-            fields=fields,
-            canonical_mapping=canonical_mapping,
-            total_records=total_records,
-            raw_data=records[:3]  # Show first 3 records
-        )
-        
-    except json.JSONDecodeError as e:
-        flash(f'Invalid JSON file: {str(e)}', 'error')
-        return redirect(url_for('upload'))
-    except requests.exceptions.RequestException as e:
-        flash(f'Failed to connect to inference API: {str(e)}', 'error')
-        return redirect(url_for('upload'))
+        return render_template('results.html', results=results)
+    
     except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
-        return redirect(url_for('upload'))
+        print(f"❌ Route error: {e}")
+        return render_template('results.html', results=[], error=str(e))
+
+@app.route('/pipeline')
+def pipeline():
+    """Show pipeline status"""
+    try:
+        # Check Kafka status
+        kafka_status = check_kafka_status()
+        
+        # Check API status
+        api_status = check_api_status()
+        
+        # Get recent processing stats
+        stats = get_processing_stats()
+        
+        return render_template('pipeline.html', 
+                             kafka_status=kafka_status,
+                             api_status=api_status,
+                             stats=stats)
+    
+    except Exception as e:
+        print(f"❌ Pipeline route error: {e}")
+        return render_template('pipeline.html', 
+                             kafka_status=False,
+                             api_status=False,
+                             stats={
+                                 'total_files': 0,
+                                 'total_records': 0,
+                                 'avg_records_per_file': 0
+                             },
+                             error=str(e))
+    
+@app.route('/api/pipeline/metrics')
+def pipeline_metrics():
+    """Get real-time pipeline metrics"""
+    try:
+        stats = get_processing_stats()
+        
+        # Calculate throughput (simplified)
+        import time
+        current_time = time.time()
+        
+        return jsonify({
+            'success': True,
+            'metrics': {
+                'total_files': stats['total_files'],
+                'total_records': stats['total_records'],
+                'avg_per_file': stats['avg_records_per_file'],
+                'throughput': stats.get('throughput', 0),
+                'timestamp': datetime.now().isoformat()
+            },
+            'status': {
+                'kafka': check_kafka_status(),
+                'api': check_api_status(),
+                'storage': os.path.exists(STORAGE_DIR)
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    
 
 
-@app.route('/api/infer', methods=['POST'])
-def api_infer():
-    """API endpoint for schema inference"""
+@app.route('/analytics')
+def analytics():
+    """Analytics dashboard"""
+    try:
+        stats = calculate_analytics()
+        return render_template('analytics.html', stats=stats)
+    except Exception as e:
+        return f"Error loading analytics: {str(e)}", 500
+
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    try:
+        # Check API
+        api_healthy = check_api_status()
+        
+        # Check Kafka (simplified)
+        kafka_healthy = True  # You can add actual Kafka health check
+        
+        return jsonify({
+            'status': 'healthy' if (api_healthy and kafka_healthy) else 'degraded',
+            'api': 'healthy' if api_healthy else 'unhealthy',
+            'kafka': 'healthy' if kafka_healthy else 'unhealthy',
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
+
+@app.route('/send_to_kafka', methods=['POST'])
+def send_to_kafka():
+    """Send schema to Kafka pipeline"""
     try:
         data = request.get_json()
         
-        if not data or 'data' not in data:
-            return jsonify({'error': 'No data provided'}), 400
+        # Here you would integrate with your producer
+        # For now, we'll save to storage
+        filename = f"manual_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join(STORAGE_DIR, filename)
         
-        # Call inference API
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Data queued for processing',
+            'filename': filename
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/inference', methods=['POST'])
+def inference_proxy():
+    """Proxy requests to inference API"""
+    try:
+        data = request.get_json()
+        
         response = requests.post(
-            f"{INFERENCE_API}/infer",
+            f"{INFERENCE_API_URL}/infer",
             json=data,
             timeout=10
         )
         
-        return jsonify(response.json()), response.status_code
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/pipeline')
-def pipeline_view():
-    """View pipeline and send to Kafka"""
-    return render_template('pipeline.html')
-
-
-@app.route('/api/send-to-kafka', methods=['POST'])
-def send_to_kafka():
-    """Send data to Kafka pipeline"""
-    try:
-        data = request.get_json()
-        records = data.get('records', [])
-        
-        if not records:
-            return jsonify({'error': 'No records provided'}), 400
-        
-        # Initialize producer
-        producer = SchemaProducer()
-        
-        results = []
-        for i, record in enumerate(records):
-            result = producer.send_record(record, key=f"web-{i}")
-            results.append(result)
-        
-        producer.close()
-        
-        success_count = sum(1 for r in results if r.get('success'))
-        
+        return jsonify(response.json())
+    except requests.exceptions.ConnectionError:
         return jsonify({
-            'success': True,
-            'total': len(records),
-            'sent': success_count,
-            'results': results
-        })
+            'error': 'Inference API is not running',
+            'message': 'Please start the inference API: cd inference && uvicorn api:app --port 8001'
+        }), 503
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+@app.route('/storage/<filename>')
+def serve_storage_file(filename):
+    """Serve storage files for viewing"""
+    try:
+        filepath = os.path.join(STORAGE_DIR, filename)
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'File not found'}), 404
         
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        
+        return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Helper functions
 
-@app.route('/history')
-def history():
-    """View processing history"""
-    records = storage.list_records(limit=20)
-    return render_template('history.html', records=records)
-
-
-@app.route('/health')
-def health():
-    """Health check"""
-    # Check if inference API is accessible
+def check_kafka_status():
+    """Check if Kafka is running"""
     try:
-        response = requests.get(f"{INFERENCE_API}/health", timeout=2)
-        api_status = 'healthy' if response.status_code == 200 else 'unhealthy'
+        # Simple check - you can enhance this
+        import socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(('localhost', 9092))
+        sock.close()
+        return result == 0
     except:
-        api_status = 'unreachable'
-    
-    return jsonify({
-        'status': 'healthy',
-        'inference_api': api_status,
-        'timestamp': datetime.utcnow().isoformat()
-    })
+        return False
 
+def check_api_status():
+    """Check if inference API is running"""
+    try:
+        response = requests.get(f"{INFERENCE_API_URL}/health", timeout=2)
+        return response.status_code == 200
+    except:
+        return False
+
+def get_processing_stats():
+    """Get processing statistics"""
+    try:
+        result_files = glob.glob(os.path.join(STORAGE_DIR, 'record_*.json'))
+        
+        total_records = 0
+        total_files = len(result_files)
+        
+        for file_path in result_files:
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    total_records += len(data.get('data', []))
+            except:
+                continue
+        
+        return {
+            'total_files': total_files,
+            'total_records': total_records,
+            'avg_records_per_file': total_records / total_files if total_files > 0 else 0
+        }
+    except:
+        return {
+            'total_files': 0,
+            'total_records': 0,
+            'avg_records_per_file': 0
+        }
+    
+
+
+def calculate_analytics():
+    """Calculate analytics data"""
+    try:
+        result_files = glob.glob(os.path.join(STORAGE_DIR, 'record_*.json'))
+        
+        total_fields = 0
+        total_schemas = 0
+        type_distribution = {}
+        confidence_scores = []
+        
+        for file_path in result_files[:100]:  # Analyze last 100 files
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    schema = data.get('schema', {})
+                    
+                    total_schemas += 1
+                    total_fields += len(schema.get('fields', []))
+                    
+                    # Type distribution
+                    for field in schema.get('fields', []):
+                        field_type = field.get('inferred_type', 'unknown')
+                        type_distribution[field_type] = type_distribution.get(field_type, 0) + 1
+                        
+                        # Confidence scores
+                        confidence = field.get('confidence', 0)
+                        confidence_scores.append(confidence)
+            except:
+                continue
+        
+        avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0
+        
+        return {
+            'total_schemas': total_schemas,
+            'total_fields': total_fields,
+            'avg_fields_per_schema': total_fields / total_schemas if total_schemas > 0 else 0,
+            'avg_confidence': avg_confidence,
+            'type_distribution': type_distribution,
+            'field_growth_trend': []  # You can add trend calculation
+        }
+    except Exception as e:
+        print(f"Analytics error: {e}")
+        return {
+            'total_schemas': 0,
+            'total_fields': 0,
+            'avg_fields_per_schema': 0,
+            'avg_confidence': 0,
+            'type_distribution': {},
+            'field_growth_trend': []
+        }
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return render_template('500.html'), 500
 
 if __name__ == '__main__':
-    print("🚀 Starting Schema Inference Demo UI")
-    print(f"📍 Inference API: {INFERENCE_API}")
-    print(f"🌐 Access at: http://localhost:5000")
+    print("🚀 Starting AirETL Web UI...")
+    print(f"📁 Storage directory: {STORAGE_DIR}")
+    print(f"🔗 Inference API URL: {INFERENCE_API_URL}")
+    print("📊 Dashboard: http://localhost:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)

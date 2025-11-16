@@ -1,90 +1,680 @@
-{% extends "base.html" %}
+{% extends "layout.html" %}
 
-{% block title %}Home - Schema Inference Demo{% endblock %}
+{% block title %}Upload Data - AirETL{% endblock %}
 
 {% block content %}
-<div class="hero">
-    <h1>🔍 ML-Powered Schema Inference</h1>
-    <p class="tagline">Automatically detect schemas from messy JSON data with confidence scoring</p>
-    
-    <div class="cta-buttons">
-        <a href="{{ url_for('upload') }}" class="btn btn-primary">Try It Now</a>
-        <a href="{{ url_for('pipeline_view') }}" class="btn btn-secondary">View Pipeline</a>
-    </div>
-</div>
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        
+        <!-- Hero Section -->
+        <div class="hero-section text-center mb-5 animate-fade-in">
+            <div class="hero-icon mb-3">
+                <i class="bi bi-diagram-3-fill text-primary" style="font-size: 4rem;"></i>
+            </div>
+            <h1 class="display-4 fw-bold mb-3">Dynamic Schema Inference</h1>
+            <p class="lead text-muted">
+                Upload your unstructured data and watch AI infer the schema in real-time
+            </p>
+            <div class="d-flex justify-content-center gap-3 mt-4">
+                <span class="badge badge-feature">
+                    <i class="bi bi-lightning-fill"></i> Real-time Processing
+                </span>
+                <span class="badge badge-feature">
+                    <i class="bi bi-shield-check"></i> Confidence Scoring
+                </span>
+                <span class="badge badge-feature">
+                    <i class="bi bi-graph-up"></i> Pattern Detection
+                </span>
+            </div>
+        </div>
 
-<div class="features">
-    <h2>✨ Key Features</h2>
-    
-    <div class="feature-grid">
-        <div class="feature-card">
-            <div class="feature-icon">🎯</div>
-            <h3>High Confidence Detection</h3>
-            <p>ML-powered type inference with 0.0-1.0 confidence scores</p>
-        </div>
-        
-        <div class="feature-card">
-            <div class="feature-icon">🔗</div>
-            <h3>Canonical Mapping</h3>
-            <p>Automatically maps similar fields (price/cost/amount)</p>
-        </div>
-        
-        <div class="feature-card">
-            <div class="feature-icon">📊</div>
-            <h3>Pattern Recognition</h3>
-            <p>Detects emails, URLs, dates, currencies, phone numbers</p>
-        </div>
-        
-        <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3>Real-time Processing</h3>
-            <p>Kafka-based pipeline for scalable data streaming</p>
-        </div>
-    </div>
-</div>
+        <!-- Upload Card -->
+        <div class="card card-upload shadow-lg border-0 mb-4">
+            <div class="card-body p-5">
+                <form id="upload-form" class="mb-0">
+                    <div class="upload-area" id="upload-area">
+                        <input 
+                            type="file" 
+                            class="d-none" 
+                            id="file-input"
+                            accept=".json"
+                            required
+                        >
+                        <label for="file-input" class="upload-label">
+                            <div class="upload-icon mb-3">
+                                <i class="bi bi-cloud-upload-fill"></i>
+                            </div>
+                            <h5 class="mb-2">Drop JSON file here or click to browse</h5>
+                            <p class="text-muted mb-0">
+                                Supports single objects or arrays • Max 16MB
+                            </p>
+                        </label>
+                    </div>
 
-<div class="demo-section">
-    <h2>🚀 How It Works</h2>
-    
-    <div class="steps">
-        <div class="step">
-            <div class="step-number">1</div>
-            <h3>Upload JSON</h3>
-            <p>Upload your messy, inconsistent JSON data</p>
-        </div>
-        
-        <div class="step-arrow">→</div>
-        
-        <div class="step">
-            <div class="step-number">2</div>
-            <h3>Infer Schema</h3>
-            <p>ML analyzes types with confidence scores</p>
-        </div>
-        
-        <div class="step-arrow">→</div>
-        
-        <div class="step">
-            <div class="step-number">3</div>
-            <h3>Review Results</h3>
-            <p>See inferred schema with canonical mappings</p>
-        </div>
-    </div>
-</div>
+                    <div id="file-preview" class="mt-3" style="display: none;">
+                        <div class="alert alert-info d-flex align-items-center">
+                            <i class="bi bi-file-earmark-text fs-3 me-3"></i>
+                            <div class="flex-grow-1">
+                                <strong id="file-name"></strong>
+                                <br>
+                                <small id="file-size" class="text-muted"></small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
 
-<div class="stats">
-    <div class="stat-card">
-        <div class="stat-number">92%</div>
-        <div class="stat-label">Average Confidence</div>
-    </div>
-    
-    <div class="stat-card">
-        <div class="stat-number">70%</div>
-        <div class="stat-label">Cost Savings</div>
-    </div>
-    
-    <div class="stat-card">
-        <div class="stat-number">20+</div>
-        <div class="stat-label">Hours Saved/Week</div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-3" id="upload-btn">
+                        <i class="bi bi-magic"></i> Infer Schema
+                    </button>
+                </form>
+
+                <!-- Progress -->
+                <div id="progress-section" class="mt-4" style="display: none;">
+                    <div class="progress-container">
+                        <div class="progress-step active">
+                            <div class="progress-icon">
+                                <i class="bi bi-upload"></i>
+                            </div>
+                            <span>Uploading</span>
+                        </div>
+                        <div class="progress-line"></div>
+                        <div class="progress-step" id="step-inference">
+                            <div class="progress-icon">
+                                <i class="bi bi-cpu"></i>
+                            </div>
+                            <span>Inferring</span>
+                        </div>
+                        <div class="progress-line"></div>
+                        <div class="progress-step" id="step-complete">
+                            <div class="progress-icon">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                            <span>Complete</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="results-section" class="mt-4" style="display: none;">
+                    <hr class="my-4">
+                    
+                    <!-- Success Header -->
+                    <div class="alert alert-success alert-modern">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill fs-2 me-3"></i>
+                            <div>
+                                <h5 class="alert-heading mb-1">Schema Inferred Successfully!</h5>
+                                <p class="mb-0">Analyzed <strong id="record-count">0</strong> records with <strong id="field-count">0</strong> fields detected</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-icon bg-primary">
+                                    <i class="bi bi-layout-three-columns"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3 id="total-fields">0</h3>
+                                    <p>Total Fields</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-icon bg-success">
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3 id="avg-confidence">0%</h3>
+                                    <p>Avg Confidence</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-icon bg-info">
+                                    <i class="bi bi-eye"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3 id="patterns-found">0</h3>
+                                    <p>Patterns Found</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="metric-card">
+                                <div class="metric-icon bg-warning">
+                                    <i class="bi bi-link-45deg"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3 id="canonical-mappings">0</h3>
+                                    <p>Canonical Maps</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schema Table -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-table"></i> Inferred Schema
+                                </h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary" onclick="filterFields('all')">All</button>
+                                    <button class="btn btn-outline-success" onclick="filterFields('high')">High Confidence</button>
+                                    <button class="btn btn-outline-warning" onclick="filterFields('medium')">Medium</button>
+                                    <button class="btn btn-outline-danger" onclick="filterFields('low')">Low</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-modern mb-0" id="schema-table">
+                                    <thead>
+                                        <tr>
+                                            <th width="30%">Field Name</th>
+                                            <th width="20%">Inferred Type</th>
+                                            <th width="15%">Confidence</th>
+                                            <th width="20%">Pattern</th>
+                                            <th width="15%">Canonical</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="schema-tbody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confidence Distribution Chart -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-bar-chart-fill"></i> Confidence Distribution
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="confidence-chart" height="80"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Type Distribution -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-pie-chart-fill"></i> Type Distribution
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <canvas id="type-chart"></canvas>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="type-legend" class="type-legend"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-primary" onclick="downloadSchema()">
+                            <i class="bi bi-download"></i> Download Schema
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="copyToClipboard()">
+                            <i class="bi bi-clipboard"></i> Copy JSON
+                        </button>
+                        <a href="/results" class="btn btn-outline-secondary">
+                            <i class="bi bi-table"></i> View All Results
+                        </a>
+                        <button class="btn btn-outline-success" onclick="sendToKafka()">
+                            <i class="bi bi-send"></i> Send to Kafka
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Error -->
+                <div id="error-section" class="alert alert-danger mt-4" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+                        <div>
+                            <strong>Error:</strong> <span id="error-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Data -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h6 class="mb-3">
+                    <i class="bi bi-lightbulb"></i> Try with sample data:
+                </h6>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary btn-sm" onclick="loadSample('sample1')">
+                        <i class="bi bi-file-text"></i> E-commerce Data
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="loadSample('sample2')">
+                        <i class="bi bi-person"></i> User Profiles
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="loadSample('sample3')">
+                        <i class="bi bi-exclamation-triangle"></i> Messy Data
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSchema = null;
+let currentFields = [];
+let confidenceChart = null;
+let typeChart = null;
+
+// File upload handling
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+const filePreview = document.getElementById('file-preview');
+
+// Drag and drop
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        fileInput.files = files;
+        showFilePreview(files[0]);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        showFilePreview(e.target.files[0]);
+    }
+});
+
+function showFilePreview(file) {
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-size').textContent = formatFileSize(file.size);
+    filePreview.style.display = 'block';
+}
+
+function clearFile() {
+    fileInput.value = '';
+    filePreview.style.display = 'none';
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+// Form submission
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const file = fileInput.files[0];
+    if (!file) {
+        showError('Please select a file');
+        return;
+    }
+    
+    // Show progress
+    showProgress();
+    
+    // Read and parse file
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            
+            // Update progress
+            document.getElementById('step-inference').classList.add('active');
+            
+            // Call API
+            const response = await fetch('http://localhost:8001/infer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: Array.isArray(data) ? data : [data] })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Inference API failed');
+            }
+            
+            const result = await response.json();
+            
+            // Update progress
+            document.getElementById('step-complete').classList.add('active');
+            
+            setTimeout(() => {
+                displayResults(result, Array.isArray(data) ? data.length : 1);
+            }, 500);
+            
+        } catch (error) {
+            hideProgress();
+            showError(error.message);
+        }
+    };
+    
+    reader.onerror = () => {
+        hideProgress();
+        showError('Failed to read file');
+    };
+    
+    reader.readAsText(file);
+});
+
+function showProgress() {
+    document.getElementById('progress-section').style.display = 'block';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+    document.getElementById('upload-btn').disabled = true;
+}
+
+function hideProgress() {
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('upload-btn').disabled = false;
+}
+
+function displayResults(result, recordCount) {
+    hideProgress();
+    
+    currentSchema = result;
+    currentFields = result.fields || [];
+    
+    // Show results section
+    document.getElementById('results-section').style.display = 'block';
+    document.getElementById('results-section').classList.add('animate-fade-in');
+    
+    // Update counts
+    document.getElementById('record-count').textContent = recordCount;
+    document.getElementById('field-count').textContent = currentFields.length;
+    document.getElementById('total-fields').textContent = currentFields.length;
+    
+    // Calculate metrics
+    const avgConfidence = currentFields.reduce((sum, f) => sum + (f.confidence || 0), 0) / currentFields.length;
+    document.getElementById('avg-confidence').textContent = Math.round(avgConfidence * 100) + '%';
+    
+    const patternsFound = currentFields.filter(f => f.pattern && f.pattern !== 'none').length;
+    document.getElementById('patterns-found').textContent = patternsFound;
+    
+    const canonicalMaps = currentFields.filter(f => f.canonical_name && f.canonical_name !== f.name).length;
+    document.getElementById('canonical-mappings').textContent = canonicalMaps;
+    
+    // Build table
+    buildSchemaTable();
+    
+    // Build charts
+    buildConfidenceChart();
+    buildTypeChart();
+}
+
+function buildSchemaTable() {
+    const tbody = document.getElementById('schema-tbody');
+    tbody.innerHTML = '';
+    
+    currentFields.forEach(field => {
+        const confidence = field.confidence || 0;
+        const confidenceLevel = confidence >= 0.8 ? 'high' : confidence >= 0.5 ? 'medium' : 'low';
+        const confidenceClass = confidence >= 0.8 ? 'success' : confidence >= 0.5 ? 'warning' : 'danger';
+        
+        const row = tbody.insertRow();
+        row.setAttribute('data-confidence', confidenceLevel);
+        
+        row.innerHTML = `
+            <td>
+                <code class="field-name">${field.name}</code>
+            </td>
+            <td>
+                <span class="badge badge-type bg-${getTypeBadgeColor(field.inferred_type)}">
+                    ${field.inferred_type}
+                </span>
+            </td>
+            <td>
+                <div class="confidence-bar">
+                    <div class="confidence-fill bg-${confidenceClass}" style="width: ${confidence * 100}%"></div>
+                    <span class="confidence-text">${Math.round(confidence * 100)}%</span>
+                </div>
+            </td>
+            <td>
+                ${field.pattern && field.pattern !== 'none' 
+                    ? `<span class="badge bg-info">${field.pattern}</span>` 
+                    : '<span class="text-muted">-</span>'}
+            </td>
+            <td>
+                ${field.canonical_name && field.canonical_name !== field.name
+                    ? `<span class="badge bg-warning">${field.canonical_name}</span>`
+                    : '<span class="text-muted">-</span>'}
+            </td>
+        `;
+    });
+}
+
+function buildConfidenceChart() {
+    const ctx = document.getElementById('confidence-chart').getContext('2d');
+    
+    if (confidenceChart) {
+        confidenceChart.destroy();
+    }
+    
+    const confidenceData = currentFields.map(f => ({
+        name: f.name,
+        confidence: (f.confidence || 0) * 100
+    }));
+    
+    confidenceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: confidenceData.map(d => d.name),
+            datasets: [{
+                label: 'Confidence Score',
+                data: confidenceData.map(d => d.confidence),
+                backgroundColor: confidenceData.map(d => {
+                    if (d.confidence >= 80) return '#198754';
+                    if (d.confidence >= 50) return '#ffc107';
+                    return '#dc3545';
+                }),
+                borderWidth: 0,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: value => value + '%'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function buildTypeChart() {
+    const ctx = document.getElementById('type-chart').getContext('2d');
+    
+    if (typeChart) {
+        typeChart.destroy();
+    }
+    
+    // Count types
+    const typeCounts = {};
+    currentFields.forEach(f => {
+        typeCounts[f.inferred_type] = (typeCounts[f.inferred_type] || 0) + 1;
+    });
+    
+    const typeColors = {
+        'string': '#0d6efd',
+        'integer': '#198754',
+        'float': '#0dcaf0',
+        'boolean': '#6c757d',
+        'datetime': '#ffc107',
+        'email': '#d63384',
+        'url': '#20c997',
+        'phone': '#fd7e14'
+    };
+    
+    typeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(typeCounts),
+            datasets: [{
+                data: Object.values(typeCounts),
+                backgroundColor: Object.keys(typeCounts).map(t => typeColors[t] || '#6c757d'),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+    
+    // Build custom legend
+    const legend = document.getElementById('type-legend');
+    legend.innerHTML = Object.entries(typeCounts)
+        .map(([type, count]) => `
+            <div class="type-legend-item">
+                <span class="type-legend-color" style="background: ${typeColors[type] || '#6c757d'}"></span>
+                <span class="type-legend-label">${type}</span>
+                <span class="type-legend-count">${count}</span>
+            </div>
+        `).join('');
+}
+
+function getTypeBadgeColor(type) {
+    const colors = {
+        'string': 'primary',
+        'integer': 'success',
+        'float': 'info',
+        'boolean': 'secondary',
+        'datetime': 'warning',
+        'email': 'danger',
+        'url': 'dark',
+        'phone': 'light'
+    };
+    return colors[type] || 'secondary';
+}
+
+function filterFields(level) {
+    const rows = document.querySelectorAll('#schema-tbody tr');
+    rows.forEach(row => {
+        if (level === 'all') {
+            row.style.display = '';
+        } else {
+            row.style.display = row.getAttribute('data-confidence') === level ? '' : 'none';
+        }
+    });
+}
+
+function downloadSchema() {
+    if (!currentSchema) return;
+    
+    const dataStr = JSON.stringify(currentSchema, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `schema_${Date.now()}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    showToast('Schema downloaded successfully', 'success');
+}
+
+function copyToClipboard() {
+    if (!currentSchema) return;
+    
+    const text = JSON.stringify(currentSchema, null, 2);
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Schema copied to clipboard', 'success');
+    });
+}
+
+async function sendToKafka() {
+    if (!currentSchema) return;
+    
+    try {
+        showToast('Sending to Kafka...', 'info');
+        
+        const response = await fetch('/send_to_kafka', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(currentSchema)
+        });
+        
+        if (response.ok) {
+            showToast('Successfully sent to Kafka!', 'success');
+        } else {
+            throw new Error('Failed to send');
+        }
+    } catch (error) {
+        showToast('Failed to send to Kafka', 'danger');
+    }
+}
+
+function showError(message) {
+    document.getElementById('error-message').textContent = message;
+    document.getElementById('error-section').style.display = 'block';
+    document.getElementById('results-section').style.display = 'none';
+}
+
+function showToast(message, type = 'info') {
+    const alertContainer = document.getElementById('alert-container');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+function loadSample(sample) {
+    // This would load sample data
+    showToast(`Loading ${sample} data...`, 'info');
+}
+</script>
 {% endblock %}

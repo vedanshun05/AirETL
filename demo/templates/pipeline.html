@@ -1,40 +1,551 @@
-{% extends "base.html" %}
+{% extends "layout.html" %}
 
-{% block title %}Pipeline - Schema Inference Demo{% endblock %}
+{% block title %}Pipeline - AirETL{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Page Layout */
+.pipeline-page {
+    padding: 2rem 0;
+}
+
+/* Header Section */
+.pipeline-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.pipeline-header h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+    animation: slideDown 0.6s ease-out;
+}
+
+.pipeline-header p {
+    font-size: 1.25rem;
+    color: #6c757d;
+    animation: fadeIn 0.8s ease-out;
+}
+
+/* Pipeline Diagram */
+.pipeline-diagram {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 25px;
+    padding: 3rem 2rem;
+    margin: 2rem 0 3rem 0;
+    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+    overflow-x: auto;
+    position: relative;
+}
+
+.pipeline-diagram::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c);
+    border-radius: 25px;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.pipeline-diagram:hover::before {
+    opacity: 0.3;
+    animation: borderGlow 3s infinite;
+}
+
+@keyframes borderGlow {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+.pipeline-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    min-width: 900px;
+}
+
+.pipeline-step {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    flex: 1;
+    max-width: 200px;
+    position: relative;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.pipeline-step::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 3px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.pipeline-step:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 20px 50px rgba(102, 126, 234, 0.4);
+}
+
+.pipeline-step:hover::before {
+    opacity: 1;
+}
+
+.step-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+    animation: float 3s ease-in-out infinite;
+}
+
+.pipeline-step:nth-child(1) .step-icon { animation-delay: 0s; }
+.pipeline-step:nth-child(3) .step-icon { animation-delay: 0.5s; }
+.pipeline-step:nth-child(5) .step-icon { animation-delay: 1s; }
+.pipeline-step:nth-child(7) .step-icon { animation-delay: 1.5s; }
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.step-label {
+    font-weight: 700;
+    color: #333;
+    font-size: 1.1rem;
+    letter-spacing: -0.5px;
+}
+
+.pipeline-arrow {
+    color: white;
+    font-size: 3rem;
+    font-weight: bold;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    animation: pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Pipeline Info Section */
+.pipeline-info {
+    margin: 4rem 0;
+}
+
+.pipeline-info h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2rem;
+    text-align: center;
+    position: relative;
+}
+
+.pipeline-info h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 2px;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2.5rem;
+}
+
+.status-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2.5rem;
+    text-align: center;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.status-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+}
+
+.status-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 45px rgba(102, 126, 234, 0.3);
+}
+
+.status-card:hover::before {
+    transform: scaleX(1);
+}
+
+.status-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.status-card:nth-child(1) .status-icon { animation-delay: 0s; }
+.status-card:nth-child(2) .status-icon { animation-delay: 0.3s; }
+.status-card:nth-child(3) .status-icon { animation-delay: 0.6s; }
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.status-label {
+    font-size: 1rem;
+    color: #6c757d;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.status-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Commands Section */
+.commands-section {
+    margin: 4rem 0;
+}
+
+.commands-section h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 2rem;
+    text-align: center;
+    position: relative;
+}
+
+.commands-section h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 2px;
+}
+
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+    margin-top: 2.5rem;
+}
+
+.command-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+}
+
+.command-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.command-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 45px rgba(102, 126, 234, 0.25);
+}
+
+.command-card:hover::before {
+    opacity: 1;
+}
+
+.command-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.command-card h3::before {
+    content: '▶';
+    color: #667eea;
+    font-size: 0.875rem;
+}
+
+.command-card pre {
+    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 0;
+    overflow-x: auto;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.command-card pre::before {
+    content: '$ ';
+    color: #48bb78;
+    font-weight: bold;
+}
+
+.command-card code {
+    color: #e2e8f0;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    line-height: 1.6;
+}
+
+.command-card pre:hover {
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+/* Copy Button */
+.copy-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(102, 126, 234, 0.9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+}
+
+.command-card:hover .copy-button {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.copy-button:hover {
+    background: #764ba2;
+    transform: scale(1.05);
+}
+
+.copy-button:active {
+    transform: scale(0.95);
+}
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.status-card {
+    animation: slideUp 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+.status-card:nth-child(1) { animation-delay: 0.1s; }
+.status-card:nth-child(2) { animation-delay: 0.2s; }
+.status-card:nth-child(3) { animation-delay: 0.3s; }
+
+.command-card {
+    animation: slideUp 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+.command-card:nth-child(1) { animation-delay: 0.1s; }
+.command-card:nth-child(2) { animation-delay: 0.2s; }
+.command-card:nth-child(3) { animation-delay: 0.3s; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .pipeline-flow {
+        flex-direction: column;
+        min-width: auto;
+        gap: 1rem;
+    }
+    
+    .pipeline-arrow {
+        transform: rotate(90deg);
+        font-size: 2rem;
+    }
+    
+    .pipeline-step {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .status-grid,
+    .commands-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .pipeline-header h1 {
+        font-size: 2rem;
+    }
+}
+
+/* Scrollbar Styling */
+.pipeline-diagram::-webkit-scrollbar {
+    height: 8px;
+}
+
+.pipeline-diagram::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.pipeline-diagram::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+}
+
+.pipeline-diagram::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.command-card pre::-webkit-scrollbar {
+    height: 6px;
+}
+
+.command-card pre::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+}
+
+.command-card pre::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 10px;
+}
+
+.command-card pre::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.7);
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="pipeline-page">
-    <h1>⚡ Data Pipeline</h1>
-    <p>Real-time data streaming through Kafka</p>
+    <!-- Header -->
+    <div class="pipeline-header">
+        <h1>⚡ Data Pipeline</h1>
+        <p>Real-time data streaming through Kafka</p>
+    </div>
     
+    <!-- Pipeline Diagram -->
     <div class="pipeline-diagram">
-        <div class="pipeline-step">
-            <div class="step-icon">📥</div>
-            <div class="step-label">JSON Upload</div>
-        </div>
-        
-        <div class="pipeline-arrow">→</div>
-        
-        <div class="pipeline-step">
-            <div class="step-icon">🔍</div>
-            <div class="step-label">Schema Inference</div>
-        </div>
-        
-        <div class="pipeline-arrow">→</div>
-        
-        <div class="pipeline-step">
-            <div class="step-icon">📨</div>
-            <div class="step-label">Kafka Stream</div>
-        </div>
-        
-        <div class="pipeline-arrow">→</div>
-        
-        <div class="pipeline-step">
-            <div class="step-icon">💾</div>
-            <div class="step-label">Storage</div>
+        <div class="pipeline-flow">
+            <div class="pipeline-step">
+                <div class="step-icon">📥</div>
+                <div class="step-label">JSON Upload</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <div class="pipeline-step">
+                <div class="step-icon">🔍</div>
+                <div class="step-label">Schema Inference</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <div class="pipeline-step">
+                <div class="step-icon">📨</div>
+                <div class="step-label">Kafka Stream</div>
+            </div>
+            
+            <div class="pipeline-arrow">→</div>
+            
+            <div class="pipeline-step">
+                <div class="step-icon">💾</div>
+                <div class="step-label">Storage</div>
+            </div>
         </div>
     </div>
     
+    <!-- Pipeline Status -->
     <div class="pipeline-info">
         <h2>📊 Pipeline Status</h2>
         
@@ -59,23 +570,95 @@
         </div>
     </div>
     
+    <!-- Quick Commands -->
     <div class="commands-section">
         <h2>🖥️ Quick Commands</h2>
         
-        <div class="command-card">
-            <h3>Start Consumer</h3>
-            <pre><code>cd pipeline && python consumer.py</code></pre>
-        </div>
-        
-        <div class="command-card">
-            <h3>Send Test Data</h3>
-            <pre><code>cd pipeline && python producer.py ../data/sample1.json</code></pre>
-        </div>
-        
-        <div class="command-card">
-            <h3>View Kafka Logs</h3>
-            <pre><code>docker-compose logs -f kafka</code></pre>
+        <div class="commands-grid">
+            <div class="command-card">
+                <button class="copy-button" onclick="copyCommand(this, 'cd pipeline && python consumer.py')">
+                    📋 Copy
+                </button>
+                <h3>Start Consumer</h3>
+                <pre><code>cd pipeline && python consumer.py</code></pre>
+            </div>
+            
+            <div class="command-card">
+                <button class="copy-button" onclick="copyCommand(this, 'cd pipeline && python producer.py ../data/sample1.json')">
+                    📋 Copy
+                </button>
+                <h3>Send Test Data</h3>
+                <pre><code>cd pipeline && python producer.py ../data/sample1.json</code></pre>
+            </div>
+            
+            <div class="command-card">
+                <button class="copy-button" onclick="copyCommand(this, 'docker-compose logs -f kafka')">
+                    📋 Copy
+                </button>
+                <h3>View Kafka Logs</h3>
+                <pre><code>docker-compose logs -f kafka</code></pre>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Copy command to clipboard
+function copyCommand(button, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        // Success feedback
+        const originalText = button.innerHTML;
+        button.innerHTML = '✓ Copied!';
+        button.style.background = '#48bb78';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = 'rgba(102, 126, 234, 0.9)';
+        }, 2000);
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        button.innerHTML = '✗ Failed';
+        button.style.background = '#f56565';
+        
+        setTimeout(() => {
+            button.innerHTML = '📋 Copy';
+            button.style.background = 'rgba(102, 126, 234, 0.9)';
+        }, 2000);
+    });
+}
+
+// Add hover effect to pipeline steps
+document.querySelectorAll('.pipeline-step').forEach((step, index) => {
+    step.addEventListener('mouseenter', () => {
+        step.style.animationPlayState = 'paused';
+    });
+    
+    step.addEventListener('mouseleave', () => {
+        step.style.animationPlayState = 'running';
+    });
+});
+
+// Add parallax effect to cards on mouse move
+document.querySelectorAll('.status-card, .command-card').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        const rotateX = (y - centerY) / 20;
+        const rotateY = (centerX - x) / 20;
+        
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-10px)`;
+    });
+    
+    card.addEventListener('mouseleave', () => {
+        card.style.transform = '';
+    });
+});
+</script>
 {% endblock %}

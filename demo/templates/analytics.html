@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+
+{% block title %}Analytics - AirETL{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="bi bi-graph-up"></i> Analytics Dashboard
+        </h2>
+
+        <!-- KPI Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon bg-primary">
+                        <i class="bi bi-layers"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>{{ stats.total_schemas }}</h3>
+                        <p>Total Schemas</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon bg-success">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>{{ stats.total_fields }}</h3>
+                        <p>Total Fields</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon bg-info">
+                        <i class="bi bi-bar-chart"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>{{ stats.avg_fields_per_schema|round|int }}</h3>
+                        <p>Avg Fields/Schema</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon bg-warning">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>{{ (stats.avg_confidence * 100)|round|int }}%</h3>
+                        <p>Avg Confidence</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Type Distribution -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-pie-chart"></i> Type Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="type-chart" height="80"></canvas>
+            </div>
+        </div>
+
+        <!-- Type Breakdown Table -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-table"></i> Type Breakdown
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Count</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for type, count in stats.type_distribution.items() %}
+                            <tr>
+                                <td><span class="badge bg-primary">{{ type }}</span></td>
+                                <td>{{ count }}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar" style="width: {{ (count / stats.total_fields * 100)|round }}%">
+                                            {{ (count / stats.total_fields * 100)|round|int }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const typeData = {{ stats.type_distribution | tojson }};
+
+const ctx = document.getElementById('type-chart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(typeData),
+        datasets: [{
+            label: 'Field Count',
+            data: Object.values(typeData),
+            backgroundColor: [
+                '#0d6efd', '#198754', '#0dcaf0', '#ffc107', 
+                '#dc3545', '#6c757d', '#20c997', '#fd7e14'
+            ],
+            borderWidth: 0,
+            borderRadius: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
