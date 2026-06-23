@@ -320,3 +320,5 @@ docker-compose down -v
 ---
 
 Built with ❤️ for intelligent data engineering
+By us
+
